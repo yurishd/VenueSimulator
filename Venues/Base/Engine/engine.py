@@ -37,7 +37,7 @@ class CmdNetCommunicator(object):
     def SetCmdSocket(self, s):
         if self.cmdSocket != -1:
             if not RemoveSocket(self.cmdSocket):
-                print "{}, fail to set new cmd socket".format(self.name)
+                print ("{}, fail to set new cmd socket".format(self.name))
                 return False
             self.cmdSocket.close()
         self.cmdSocket = s
@@ -46,14 +46,14 @@ class CmdNetCommunicator(object):
 
     def AddSocket(self, s):
         if self.inSelect:
-            print "{}, fail to add socket since in select call".format(self.name)
+            print ("{}, fail to add socket since in select call".format(self.name))
             return False
         self.potentialReaders.append(s)
         return True
 
     def RemoveSocket(self, sToRemove):
         if self.inSelect:
-            print "{}, fail to remove socket since in select call".format(self.name)
+            print ("{}, fail to remove socket since in select call".format(self.name))
             return False
         tmp = []
         for s in self.potentialReaders:
@@ -100,7 +100,7 @@ class CmdNetCommunicator(object):
                     data = s.recv(toRead)
                     if 0 == len(data):
                         # Well, peer closed socket. Get out
-                        print "{}, got disconnect command socket".format(self.name)
+                        print ("{}, got disconnect command socket".format(self.name))
                         doLoop = False
                         self.OnCmdSocketDisconnect()
                         break;
@@ -602,7 +602,8 @@ class ClientBaseCmdProcessor(CmdNetCommunicator):
             self.Log("_OnNoticeL: Missing expected parameter lport")
             return False
 
-    def OnNewConnection(self, (lport, rport), connname ):
+    def OnNewConnection(self, conn_data, connname ):
+        lport, rport = conn_data
         if connname:
             name = connname
         else:
@@ -645,7 +646,8 @@ class ClientBaseCmdProcessor(CmdNetCommunicator):
             self.Log("OnNoticeCONNECTED: Missing conn for port {}?". format(lport))
             return False
 
-    def OnBrokenConnection(self, (lport, rport), connname ):
+    def OnBrokenConnection(self, conn_data, connname ):
+        lport, rport = conn_data
         self.Log('Got Disconnection notice for pair ({l},{r}, connection [{c}])'.format(
                                 l=lport,
                                 r=rport,
@@ -737,7 +739,7 @@ class ClientBaseCmdProcessor(CmdNetCommunicator):
         self.LogInternal(msg)
 
     def LogInternal(self, msg):
-        print msg
+        print (msg)
         sys.stdout.flush()
 
     def StartVenueService(self):

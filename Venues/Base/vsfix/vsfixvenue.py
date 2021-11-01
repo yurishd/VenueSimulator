@@ -1,38 +1,46 @@
 #!/usr/bin/python
-from Venues.Base.Engine.engine import VenueBaseCmdProcessor, ClientBaseCmdProcessor, ClientBaseCmdTraits, VenueBaseCmdTraits
-from mffixprotocol import MFFixProtocol
+import os
+import sys
+import inspect
+
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0, parentdir) 
+
+from Engine.engine import VenueBaseCmdProcessor, ClientBaseCmdProcessor, ClientBaseCmdTraits, VenueBaseCmdTraits
+from vsfixprotocol import VSFixProtocol
 import datetime
 
-class MFFixVenueTraits(object):
-    MFFIX_VENUE_CMD_DOMAIN="MFFIX_CMDS"
+class VSFixVenueTraits(object):
+    VSFIX_VENUE_CMD_DOMAIN="VSFIX_CMDS"
     def __init__(self):
         pass
 
-class MFFixVenue(VenueBaseCmdProcessor):
+class VSFixVenue(VenueBaseCmdProcessor):
     def __init__(self):
         # self.name must be initialized before parent constructor called
-        self.name = "MFFIX Venue"
-        super(MFFixVenue, self).__init__()
+        self.name = "VSFIX Venue"
+        super(VSFixVenue, self).__init__()
 
     def AboutToStartServer(self):
         # This is default protocol
-        self.protocol = MFFixProtocol(self) # self as a logger
+        self.protocol = VSFixProtocol(self) # self as a logger
  
-class MFFixVenueClientTraits(object):
+class VSFixVenueClientTraits(object):
     USERIDS_TUPLE_NAME    = "UserIDs"
     CONN_DESCRIPTOR_NAME  = "ConnDesc"
 
 # We can use below helper part as component to multi protocol clients
-class MFFixVenueClientProcessorHelper(object):
+class VSFixVenueClientProcessorHelper(object):
     def __init__(self, args):
-        if MFFixVenueClientTraits.USERIDS_TUPLE_NAME in args:
-            uids = args[MFFixVenueClientTraits.USERIDS_TUPLE_NAME]
+        if VSFixVenueClientTraits.USERIDS_TUPLE_NAME in args:
+            uids = args[VSFixVenueClientTraits.USERIDS_TUPLE_NAME]
             self.SetUserIDs(uids[0], uids[1]) # from Venues/Base/Engine/engine.py
             self.MDFixLoggedIn = False
             self.OFFixLoggedIn = False
         else:
             # Then MUST be here
-            for (name, userid, servingClass) in args[MFFixVenueClientTraits.CONN_DESCRIPTOR_NAME]:
+            for (name, userid, servingClass) in args[VSFixVenueClientTraits.CONN_DESCRIPTOR_NAME]:
                 self.AddRConnDescriptor(name, userid, servingClass) # from Venues/Base/Engine/engine.py
 
     def GetTag64Value(self):
@@ -94,13 +102,16 @@ class MFFixVenueClientProcessorHelper(object):
     def UpdateLogonAnswer(self, answer, data):
         return True
 
-    def NoticeMDLoggedOn(self, (lport, rport)):
+    def NoticeMDLoggedOn(self, tup_lport_rport):
+        (lport, rport) = tup_lport_rport
         self.Log("NoticeMDLoggedOn on {l}-{r}".format(l=lport, r=rport))
 
-    def NoticeOFLoggedOn(self, (lport, rport)):
+    def NoticeOFLoggedOn(self, tup_lport_rport):
+        (lport, rport) = tup_lport_rport
         self.Log("NoticeOFLoggedOn on {l}-{r}".format(l=lport, r=rport))
 
-    def NoticeLoggedOn(self, connName, (lport, rport)):
+    def NoticeLoggedOn(self, connName, tup_lport_rport):
+        (lport, rport) = tup_lport_rport
         self.Log("NoticeLoggedOn on connection {c} {l}-{r}".format(c=connName, l=lport, r=rport))
 
     def ConfirmAuth(self, connName, lport):
@@ -114,7 +125,8 @@ class MFFixVenueClientProcessorHelper(object):
         else:
             self.Log("UNEXPECTED! Didn't find connection name {n} in ports' list".format(n=connName))
 
-    def OnFixMsgFromVenue(self, (lport, rport), data):
+    def OnFixMsgFromVenue(self, tup_lport_rport, data):
+        (lport, rport) = tup_lport_rport
         self.Log("Received FIX message [{m}]".format(m='|'.join(["{k}={v}".format(k=k,v=v) for k,v in data])))
         msgType = data[2][1]
         if msgType == 'A':
@@ -188,7 +200,7 @@ class MFFixVenueClientProcessorHelper(object):
             rv = data[2:-1]
             answer[VenueBaseCmdTraits.DATA_FIELD_NAME] = rv
             self.SendFixDataToServerAsVenue(answer)
-        elif msgType == MFFixProtocol.CUSTOM_MSG_TYPE:
+        elif msgType == VSFixProtocol.CUSTOM_MSG_TYPE:
             self.Log('Got ErrorMsg from venue')
         else:
             connName = self.conn[(lport, rport)]
@@ -213,22 +225,28 @@ class MFFixVenueClientProcessorHelper(object):
           "[{c}][{l}-{r}]".format(c=connName,l=lport,r=rport) +
           "Please overwrite me. I've got base OnFIXData call!!!!!!")
 
-    def OnMarketData(self, (lport, rport), data):
-        self.Log("Please overwrite me. I've got MFFixVenueClientProcessorHelper.OnMarketData call!!!!!!")
+    def OnMarketData(self, tup_lport_rport, data):
+        (lport, rport) = tup_lport_rport
+        self.Log("Please overwrite me. I've got VSFixVenueClientProcessorHelper.OnMarketData call!!!!!!")
 
-    def OnTradeFlowData(self, (lport, rport), data):
-        self.Log("Please overwrite me. I've got MFFixVenueClientProcessorHelper.OnTradeFlowData call!!!!!!")
+    def OnTradeFlowData(self, tup_lport_rport, data):
+        (lport, rport) = tup_lport_rport
+        self.Log("Please overwrite me. I've got VSFixVenueClientProcessorHelper.OnTradeFlowData call!!!!!!")
 
-    def MDFixConnectionBroken(self, (lport, rport) ):
+    def MDFixConnectionBroken(self, tup_lport_rport):
+        (lport, rport) = tup_lport_rport
         self.Log('FIX (MD) connection (ports <{},{}>) is broken'.format(lport, rport))
 
-    def OFFixConnectionBroken(self, (lport, rport) ):
+    def OFFixConnectionBroken(self, tup_lport_rport):
+        (lport, rport) = tup_lport_rport
         self.Log('FIX (trade) connection (ports <{},{}>) is broken'.format(lport, rport))
 
-    def TheFixConnectionBroken(self, connName, (lport, rport) ):
+    def TheFixConnectionBroken(self, connName, tup_lport_rport):
+        (lport, rport) = tup_lport_rport
         self.Log('FIX ({}) connection (ports <{},{}>) is broken'.format(connName, lport, rport))
 
-    def OnBrokenConnection(self, (lport, rport) ):
+    def OnBrokenConnection(self, tup_lport_rport):
+        (lport, rport) = tup_lport_rport
         connName = self.conn[(lport, rport)]
         if self.MdOfMode:
             if connName == "md":
@@ -240,21 +258,36 @@ class MFFixVenueClientProcessorHelper(object):
         else:
             self.TheFixConnectionBroken(connName, (lport, rport) )
 
-class MFFixVenueClient(ClientBaseCmdProcessor, MFFixVenueClientProcessorHelper):
+class VSFixVenueClient(ClientBaseCmdProcessor, VSFixVenueClientProcessorHelper):
     def __init__(self, args):
         # self.name should be set before it in derived test client
         if not hasattr(self, 'name'):
-            self.name = "MFFix Client"
-        super(MFFixVenueClient, self).__init__(args)
+            self.name = "VSFix Client"
+        super(VSFixVenueClient, self).__init__(args)
        
-    def OnMsgFromVenue(self, (lport, rport), data):
-        self.OnFixMsgFromVenue((lport, rport), data)
+    def OnMsgFromVenue(self, tup_lport_rport, data):
+        self.OnFixMsgFromVenue(tup_lport_rport, data)
 
 def test():
-    venue = MFFixVenue()
-    cl=MFFixVenueClient({MFFixVenueClientTraits.USERIDS_TUPLE_NAME : ('marketdata', 'orderflow'),
+    venue = VSFixVenue()
+    cl=VSFixVenueClient({VSFixVenueClientTraits.USERIDS_TUPLE_NAME : ('marketdata', 'orderflow'),
              ClientBaseCmdTraits.PORTS_SET_NAME:['36912', '36914']})
-    cl=MFFixVenueClient({MFFixVenueClientTraits.CONN_DESCRIPTOR_NAME: (('md','marketdata'), ('of','orderflow')),
-             ClientBaseCmdTraits.PORTS_SET_NAME:['36912', '36914']})
+    cl=VSFixVenueClient(
+        {
+        VSFixVenueClientTraits.CONN_DESCRIPTOR_NAME: (('md','marketdata', None), ('of','orderflow', None)),
+        ClientBaseCmdTraits.PORTS_SET_NAME:
+            [
+                {
+                VenueBaseCmdTraits.EXCH_PORT_CONN_NAME : 'md',
+                VenueBaseCmdTraits.EXCH_PORT_DESC_KEY_NAME : '36912'
+                }
+            ,
+                {
+                VenueBaseCmdTraits.EXCH_PORT_CONN_NAME : 'of',
+                VenueBaseCmdTraits.EXCH_PORT_DESC_KEY_NAME : '36914'
+                }
+           ] 
+        }
+    )
 if __name__ == "__main__":
     test()

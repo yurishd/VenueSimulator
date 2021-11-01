@@ -5,24 +5,25 @@ import pdb
 
 fieldpttn=re.compile("(.*?)=(.*)");
 
-class MFFixProtocol(object):
+class VSFixProtocol(object):
     CUSTOM_MSG_TYPE = '1024'
     def __init__(self, logger):
-        super(MFFixProtocol, self).__init__()
+        super(VSFixProtocol, self).__init__()
         self.logger = logger
 
     @staticmethod
     def Name():
-        return 'MFFix'
+        return 'VSFix'
 
     def parse_field(self, binmsg, debug):
         rv = 0;
         for ch in binmsg:
-            (b, ) = unpack("b", ch)
+            #(b, ) = unpack("b", ch)
+            b = ch
             #if (debug):
             #    self.logger.Log(b)
             if b == 1:
-                m = fieldpttn.match(binmsg[:rv])
+                m = fieldpttn.match(binmsg[:rv].decode())
                 if not m: # very bad! something wrong
                     raise Exception("Fail to extract field from [{m}] even having SOH at index [{indx}]".format(m=binmsg, indx=rv))
                 return (m.group(1), m.group(2), rv+1)
@@ -77,7 +78,7 @@ class MFFixProtocol(object):
         return False
 
     def ErrorMsg(self, txt):
-        return [('8', 'UNKNOWN'), ('9','1024'), ('35', MFFixProtocol.CUSTOM_MSG_TYPE), ('58',txt)]
+        return [('8', 'UNKNOWN'), ('9','1024'), ('35', VSFixProtocol.CUSTOM_MSG_TYPE), ('58',txt)]
 
     def parse(self, binmsg, debug=False):
         (proto, msglen, headerParsed) = self.parse_header(binmsg, debug)
@@ -116,33 +117,33 @@ class MFFixProtocol(object):
     def pack( self, data ):
         msg = '\x01'.join(['{t}={v}'.format(t=t,v=v) for t,v in data])
         msg = msg + '\x01'
-        msg = msg + '10={c}\x01'.format(c=self.checkSumCal(msg))
+        msg = msg + '10={c}\x01'.format(c=self.checkSumCal(str.encode(msg)))
         return msg
 
 class LocalLogger(object):
     def Log(self, l):
-        print l
+        print (l)
 
 def test():
     logger = LocalLogger()
-    proto = MFFixProtocol(logger)
+    proto = VSFixProtocol(logger)
     src = "8=FIXT.1.1|9=80|35=0|34=105993|1128=9|49=TR MATCHING|56=AAAN021013BBAB|52=20171215-19:13:00.619|10=192|"
-    msg = src.replace('|', '\x01')
+    msg = str.encode(src.replace('|', '\x01'))
     (parsed, rv) = proto.parse(msg, True)
-    print "Three lines below should be identical"
-    print src
-    print '|'.join(["{k}={v}".format(k=k,v=v) for (k,v) in rv])+'|'
+    print ("Three lines below should be identical")
+    print (src)
+    print ('|'.join(["{k}={v}".format(k=k,v=v) for (k,v) in rv])+'|')
     msg = proto.pack(rv[:-1])
-    print msg.replace('\x01', '|')
+    print (msg.replace('\x01', '|'))
 
     src2 = "8=FIXT.1.1|9=00140|35=BE|49=YSH-TEST-OF|56=YSHVENUE|34=75|50=1|42=YSHLocationID|57=FXM|52=20180102-23:42:20.394|923=userReq1514936540394852326|924=1|553=|554=|10=005|"
-    msg = src2.replace('|', '\x01')
+    msg = str.encode(src2.replace('|', '\x01'))
     (parsed, rv) = proto.parse(msg, True)
-    print "Three lines below should be identical"
-    print src2
-    print '|'.join(["{k}={v}".format(k=k,v=v) for (k,v) in rv])+'|'
+    print ("Three lines below should be identical")
+    print (src2)
+    print ('|'.join(["{k}={v}".format(k=k,v=v) for (k,v) in rv])+'|')
     msg = proto.pack(rv[:-1])
-    print msg.replace('\x01', '|')
+    print (msg.replace('\x01', '|'))
 
 if __name__ == "__main__":
     test()
