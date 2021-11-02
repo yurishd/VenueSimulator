@@ -410,7 +410,7 @@ class ItchProtocol(object):
 
 class LocalLogger(object):
     def Log(self, l):
-        print l
+        print (l)
 
 def test():
     p = ItchProtocol(LocalLogger())

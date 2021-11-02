@@ -1,11 +1,19 @@
 #!/usr/bin/python
-from Venues.Base.Engine.engine import VenueBaseCmdProcessor, ClientBaseCmdProcessor, ClientBaseCmdTraits, VenueBaseCmdTraits
+import os
+import sys
+import inspect
+
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0, parentdir) 
+
+from Engine.engine import VenueBaseCmdProcessor, ClientBaseCmdProcessor, ClientBaseCmdTraits, VenueBaseCmdTraits
 from itchprotocol import ItchProtocol, MESSAGE_TYPE, \
         MsgTicker, MsgMarketSnapshot, MsgCancelOrder, MsgModifyOrder, MsgNewOrder, MsgInstDirRequest,     \
         MsgMDUnsubsRequest, MsgMDSubsRequest, MsgTickerUnsubsRequest, MsgTickerSubsRequest,               \
         MsgMarketSnapshotRequest, MsgClientHeartBeat, MsgLogoutRequest, MsgLoginRequest, MsgInstDirectory,\
         MsgErrorNotification, MsgServerHeartBeat, MsgSequencedData, MsgLoginRejected, MsgLoginAccepted 
-from Venues.Base.mffix.mffixvenue import MFFixVenueClientProcessorHelper
+#from vsfix.vsfixvenue import VSFixVenueClientProcessorHelper
 import datetime
 from collections import deque
 import pdb
@@ -36,7 +44,7 @@ class ItchVenue(VenueBaseCmdProcessor):
 class ItchVenueClientDataProc(object):
 
     def __init__(self, args):
-        super(ItchVenueClientDataProc, self).__init__(args)
+        super(ItchVenueClientDataProc, self).__init__()
         self.ItchLoggedIn = False
 
     def printMsg(self, msgType, msg, trailer = 'OVERWRITE ME!!!'):
@@ -158,7 +166,7 @@ def SettleTS():
     t = datetime.date.today() - datetime.date(1970,1,1)
     return t.days * 86400000 
 
-class ItchVenueClient(ClientBaseCmdProcessor, ItchVenueClientDataProc, MFFixVenueClientProcessorHelper):
+class ItchVenueClient(ClientBaseCmdProcessor, ItchVenueClientDataProc): #, VSFixVenueClientProcessorHelper):
     OnDataDescriptor = {
     'L':ItchVenueClientDataProc._OnLOGON,
     'O':ItchVenueClientDataProc._OnLOGOUT,
@@ -182,7 +190,8 @@ class ItchVenueClient(ClientBaseCmdProcessor, ItchVenueClientDataProc, MFFixVenu
         self.to = 1 # default 5. Timeout to expect any message from Feed (through venue).
         # self.debug = True
 
-    def OnItchMsgFromVenue(self, (lport, rport), data):
+    def OnItchMsgFromVenue(self, tup_lport_rport, data):
+        (lport, rport) = tup_lport_rport
         try:
             msgtype = data[MESSAGE_TYPE]
         except KeyError as e:
@@ -213,11 +222,13 @@ class ItchVenueClient(ClientBaseCmdProcessor, ItchVenueClientDataProc, MFFixVenu
 
         return self.OnDataDescriptor[msgtype](self, data)
 
-    def OnMsgFromVenue(self, (lport, rport), data):
-        if type(data) is dict:
-            return self.OnItchMsgFromVenue((lport, rport), data)
-        else:
-            return self.OnFixMsgFromVenue((lport, rport), data) # should be part of mffixvenue.py
+    def OnMsgFromVenue(self, tup_lport_rport, data):
+        (lport, rport) = tup_lport_rport
+        return self.OnItchMsgFromVenue((lport, rport), data)
+        #if type(data) is dict:
+        #    return self.OnItchMsgFromVenue((lport, rport), data)
+        #else:
+        #    return self.OnFixMsgFromVenue((lport, rport), data) # should be part of vsfixvenue.py
 
     def SendAsHotspotVenue(self, data):
         if type(data) is dict:
@@ -252,16 +263,20 @@ class ItchVenueClient(ClientBaseCmdProcessor, ItchVenueClientDataProc, MFFixVenu
     def SendCloseItchSession(self):
         self.SendCloseSocket(self.rconn['md']['ports'][0], self.rconn['md']['ports'][1])
 
-    def ItchConnectionBroken(self, (lport, rport) ):
+    def ItchConnectionBroken(self, tup_lport_rport):
+        (lport, rport) = tup_lport_rport
         self.Log('Itch connection (ports <{},{}>) is broken'.format(lport, rport))
         
-    def OnBrokenConnection(self, (lport, rport) ):
-        if self.conn[(lport, rport)] == "md":
-            self.ItchLoggedIn = False
-            self.ItchConnectionBroken( (lport, rport) )
-        else:
-            self.OFFixLoggedIn = False
-            self.OFFixConnectionBroken( (lport, rport) )
+    def OnBrokenConnection(self, tup_lport_rport):
+        (lport, rport) = tup_lport_rport
+        self.ItchLoggedIn = False
+        self.ItchConnectionBroken( (lport, rport) )
+        #if self.conn[(lport, rport)] == "md":
+        #    self.ItchLoggedIn = False
+        #    self.ItchConnectionBroken( (lport, rport) )
+        #else:
+        #    self.OFFixLoggedIn = False
+        #    self.OFFixConnectionBroken( (lport, rport) )
 
 def test():
     venue = ItchVenue()

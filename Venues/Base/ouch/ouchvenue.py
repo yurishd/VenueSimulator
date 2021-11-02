@@ -1,6 +1,15 @@
 #!/usr/bin/python
-from Venues.Base.Engine.engine import VenueBaseCmdProcessor, ClientBaseCmdProcessor, ClientBaseCmdTraits, VenueBaseCmdTraits
-from ouchprotocol import OuchProtocol
+import os
+import sys
+import inspect
+
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0, parentdir) 
+
+from Engine.engine import VenueBaseCmdProcessor, ClientBaseCmdProcessor, ClientBaseCmdTraits, VenueBaseCmdTraits
+from ouch.ouchprotocol import OuchProtocol
+
 import datetime
 from collections import deque
 import pdb
@@ -201,7 +210,8 @@ class OuchVenueClient(ClientBaseCmdProcessor, OuchVenueClientDataProc):
         self.quotes = {}
         self.orders = {}
 
-    def OnMsgFromVenue(self, (lport, rport), data):
+    def OnMsgFromVenue(self, tup_lport_rport, data):
+        (lport, rport) = tup_lport_rport
         try:
             msgtype = data['msgtype']
         except KeyError as e:

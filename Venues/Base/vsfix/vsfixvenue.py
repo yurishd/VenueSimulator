@@ -8,7 +8,7 @@ parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir) 
 
 from Engine.engine import VenueBaseCmdProcessor, ClientBaseCmdProcessor, ClientBaseCmdTraits, VenueBaseCmdTraits
-from vsfixprotocol import VSFixProtocol
+from vsfix.vsfixprotocol import VSFixProtocol
 import datetime
 
 class VSFixVenueTraits(object):

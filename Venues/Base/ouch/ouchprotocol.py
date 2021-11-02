@@ -589,7 +589,7 @@ class OuchProtocol(object):
 
 class LocalLogger(object):
     def Log(self, l):
-        print l
+        print (l)
 
 def test():
     p = OuchProtocol(LocalLogger())
